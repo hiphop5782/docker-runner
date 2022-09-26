@@ -20,11 +20,10 @@ import org.springframework.stereotype.Service;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
-import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.Ports;
-import com.github.dockerjava.core.command.ExecStartResultCallback;
+import com.hacademy.docker.component.PortManager;
 import com.hacademy.docker.configuration.DockerConfigurationProperty;
 import com.hacademy.docker.constant.DockerType;
 import com.hacademy.docker.error.UnsupportedContainerException;
@@ -37,11 +36,14 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class DockerServiceImpl implements DockerService{
 	
-	private Map<String, UserContainer> runningContainers = Collections.synchronizedMap(new HashMap<>());
+//	private Map<String, UserContainer> runningContainers = Collections.synchronizedMap(new HashMap<>());
 	
 	@Autowired
-	private DockerConfigurationProperty property;
+	private DockerConfigurationProperty dockerProps;
 
+	@Autowired
+	private PortManager portManager;
+	
 	@Autowired
 	private DockerClient client;
 	
@@ -59,25 +61,32 @@ public class DockerServiceImpl implements DockerService{
 	
 	@Override
 	public String start(String remoteAddress, int javaVersion, SourceCodeVO vo) throws UnsupportedEncodingException, FileNotFoundException, InterruptedException {
-		Ports ports = new Ports();
-		ports.bind(ExposedPort.tcp(10011), Ports.Binding.bindPort(10011));
-		
 		DockerType dockerType = DockerType.findImage("hiphop5782/jdk:"+javaVersion);
 		if(dockerType == null) throw new UnsupportedContainerException("지원하지 않는 컨테이너");
 		
-		UserContainer userContainer = runningContainers.containsKey(remoteAddress) ? 
-				runningContainers.get(remoteAddress) : UserContainer.builder().key(remoteAddress).build();
+		Ports ports = new Ports();
+		int port = portManager.create();
+//		int port = 10011;
+		log.info("port selected = {}", port);
+		ports.bind(ExposedPort.tcp(port), Ports.Binding.bindPort(port));
+		
+//		UserContainer userContainer = runningContainers.containsKey(remoteAddress) ? 
+//				runningContainers.get(remoteAddress) : UserContainer.builder().key(remoteAddress).build();
 		
 		CreateContainerResponse response = client.createContainerCmd(dockerType.getDockerImage())
-														.withCmd("ttyd", "-o", "-p", dockerType.getPortString(), "/bin/sh")
+														.withCmd("ttyd", "-p", String.valueOf(port), "/bin/sh")
+														.withExposedPorts(ExposedPort.tcp(port))
 														.withPortBindings(ports)
 														.exec();
+		
 		String containerId = response.getId();
 		log.info("container created = {}", containerId);
 		try {
 			client.startContainerCmd(containerId).exec();
 		}
-		catch(Exception e) {}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
 		
 		if(vo.hasCode()) {
 			String code = vo.getCode();
@@ -118,10 +127,10 @@ public class DockerServiceImpl implements DockerService{
 			*/
 		}
 		
-		userContainer.add(containerId);
-		runningContainers.put(remoteAddress, userContainer);
+//		userContainer.add(containerId);
+//		runningContainers.put(remoteAddress, userContainer);
 		
-		return property.getHttpHost()+":"+dockerType.getPort();
+		return dockerProps.getHttpHost()+":"+port;
 	}
 	
 	@Override
