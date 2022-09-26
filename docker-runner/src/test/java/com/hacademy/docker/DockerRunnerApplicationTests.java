@@ -1,9 +1,8 @@
 package com.hacademy.docker;
 
+import java.io.File;
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,12 +13,7 @@ import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.Ports;
-import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientBuilder;
-import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
-import com.hacademy.docker.configuration.DockerConfigurationProperty;
-import com.hacademy.docker.service.DockerService;
 
 @SpringBootTest
 class DockerRunnerApplicationTests {
@@ -34,10 +28,17 @@ class DockerRunnerApplicationTests {
 
 		try {
 			CreateContainerResponse createResponse = client.createContainerCmd("hiphop5782/jdk:11")
-					.withCmd("ttyd", "-p", "10011", "/bin/sh").withExposedPorts(ExposedPort.tcp(10011))
+					.withCmd("ttyd", "-p", "10011", "/bin/sh")
+					.withExposedPorts(ExposedPort.tcp(10011))
 					.withPortBindings(ports).exec();
 
 			client.startContainerCmd(createResponse.getId()).exec();
+			
+			File target = new File(System.getProperty("user.home"), "Hello.java");
+			client.copyArchiveToContainerCmd(createResponse.getId())
+												.withHostResource(target.getAbsolutePath())
+												.withRemotePath("/")
+											.exec();
 
 			ExecCreateCmdResponse execResponse = client.execCreateCmd(createResponse.getId()).withAttachStdout(true)
 					.withAttachStderr(true).withCmd("ls").withContainerId(createResponse.getId())
