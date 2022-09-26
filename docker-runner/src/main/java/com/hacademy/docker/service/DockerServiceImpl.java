@@ -6,10 +6,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.Ports;
@@ -27,7 +23,6 @@ import com.hacademy.docker.component.PortManager;
 import com.hacademy.docker.configuration.DockerConfigurationProperty;
 import com.hacademy.docker.constant.DockerType;
 import com.hacademy.docker.error.UnsupportedContainerException;
-import com.hacademy.docker.storage.UserContainer;
 import com.hacademy.docker.vo.SourceCodeVO;
 
 import lombok.extern.slf4j.Slf4j;
@@ -62,63 +57,33 @@ public class DockerServiceImpl implements DockerService{
 		DockerType dockerType = DockerType.findImage("hiphop5782/jdk:"+javaVersion);
 		if(dockerType == null) throw new UnsupportedContainerException("지원하지 않는 컨테이너");
 		
-		Ports ports = new Ports();
 		int port = portManager.create();
 		log.info("port selected = {}", port);
-		ports.bind(ExposedPort.tcp(port), Ports.Binding.bindPort(port));
 		
-		CreateContainerResponse response = client.createContainerCmd(dockerType.getDockerImage())
-														.withCmd("ttyd", "-p", String.valueOf(port), "/bin/sh")
-														.withExposedPorts(ExposedPort.tcp(port))
-														.withPortBindings(ports)
-														.exec();
-		
-		String containerId = response.getId();
+		String containerId = createContainer(dockerType, port);
 		log.info("container created = {}", containerId);
-		try {
-			client.startContainerCmd(containerId).exec();
-		}
-		catch(Exception e) {
-			e.printStackTrace();
+		
+		//start container (if crash generate next port and retry)
+		while(true) {
+			try {
+				startContainer(containerId);
+				break;
+			}
+			catch(Exception e) {
+				port = portManager.create();
+			}
 		}
 		
 		if(vo.hasCode()) {
-			String code = vo.getCode();
-			log.info("code found\n{}", code);
+			File source = createSourceFile(vo.getCode());
 			
-			//find classname
-			Matcher matcher = Pattern.compile("public\\s+class\\s+(\\w+)\\s*\\{").matcher(code);
-			matcher.find();
-			String className = matcher.group(1);
-			log.info("class name = {}", className);
-			
-			//create source file
-			File target = new File(home, className+".java");
-			try(PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(target), "UTF-8"));) {
-				writer.write(code);
-			}
-			log.info("file generated = {}", target.getAbsolutePath());
-			
-			//copy to container
-			client.copyArchiveToContainerCmd(response.getId())
-				.withHostResource(target.getAbsolutePath())
-				.withRemotePath("/")
-			.exec();
-			log.info("file copy finish");
+			copySourceFileToContainer(containerId, source);
 			
 			//delete file
-			target.delete();
+			deleteSourceFile(source);
 			
 			//compile in container source code file
-			/*
-			ExecCreateCmdResponse execResponse = client.execCreateCmd(response.getId()).withAttachStdout(true)
-					.withAttachStderr(true).withCmd("javac", className+".java").withContainerId(response.getId())
-					.exec();
-			client.execStartCmd(execResponse.getId())
-					.exec(new ExecStartResultCallback())
-					.awaitStarted().awaitCompletion();
-			log.info("compile finish");
-			*/
+			//compileSourceFile(containerId, source);
 		}
 		
 		return dockerProps.getHttpHost()+":"+port;
@@ -131,5 +96,65 @@ public class DockerServiceImpl implements DockerService{
 			client.killContainerCmd(container.getId());
 		}
 	}
+	
+	private String createContainer(DockerType dockerType, int port) {
+		Ports ports = new Ports();
+		ports.bind(ExposedPort.tcp(port), Ports.Binding.bindPort(port));
+		
+		return client.createContainerCmd(dockerType.getDockerImage())
+			.withCmd("ttyd", "-p", String.valueOf(port), "/bin/sh")
+			.withExposedPorts(ExposedPort.tcp(port))
+			.withPortBindings(ports)
+			.exec().getId();
+	}
+	
+	private void startContainer(String containerId) {
+		client.startContainerCmd(containerId).exec();
+	}
+	
+	private String findClassName(String code) {
+		Matcher matcher = Pattern.compile("public\\s+class\\s+(\\w+)\\s*\\{").matcher(code);
+		matcher.find();
+		return matcher.group(1);
+	}
+	
+	private File createSourceFile(String code) throws UnsupportedEncodingException, FileNotFoundException {
+		log.info("code found\n{}", code);
+		
+		//find classname
+		String className = findClassName(code);
+		log.info("class name = {}", className);
+		
+		//create source file
+		File target = new File(home, className+".java");
+		try(PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(target), "UTF-8"));) {
+			writer.write(code);
+		}
+		
+		return target;
+	}
+	
+	private void copySourceFileToContainer(String containerId, File source) {
+		//copy to container
+		client.copyArchiveToContainerCmd(containerId)
+			.withHostResource(source.getAbsolutePath())
+			.withRemotePath("/")
+		.exec();
+		log.info("file copy finish");
+	}
+	
+	private void deleteSourceFile(File source) {
+		source.delete();
+	}
+	
+//	private void compileSourceFile(String containerId, File source) {
+//		ExecCreateCmdResponse execResponse = client.execCreateCmd(response.getId()).withAttachStdout(true)
+//						.withAttachStderr(true).withCmd("javac", className+".java").withContainerId(response.getId())
+//						.exec();
+//				client.execStartCmd(execResponse.getId())
+//						.exec(new ExecStartResultCallback())
+//						.awaitStarted().awaitCompletion();
+//				log.info("compile finish");
+//	}
 	
 }
