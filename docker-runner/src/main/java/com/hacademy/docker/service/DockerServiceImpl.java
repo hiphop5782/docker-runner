@@ -36,8 +36,6 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class DockerServiceImpl implements DockerService{
 	
-//	private Map<String, UserContainer> runningContainers = Collections.synchronizedMap(new HashMap<>());
-	
 	@Autowired
 	private DockerConfigurationProperty dockerProps;
 
@@ -66,12 +64,8 @@ public class DockerServiceImpl implements DockerService{
 		
 		Ports ports = new Ports();
 		int port = portManager.create();
-//		int port = 10011;
 		log.info("port selected = {}", port);
 		ports.bind(ExposedPort.tcp(port), Ports.Binding.bindPort(port));
-		
-//		UserContainer userContainer = runningContainers.containsKey(remoteAddress) ? 
-//				runningContainers.get(remoteAddress) : UserContainer.builder().key(remoteAddress).build();
 		
 		CreateContainerResponse response = client.createContainerCmd(dockerType.getDockerImage())
 														.withCmd("ttyd", "-p", String.valueOf(port), "/bin/sh")
@@ -126,9 +120,6 @@ public class DockerServiceImpl implements DockerService{
 			log.info("compile finish");
 			*/
 		}
-		
-//		userContainer.add(containerId);
-//		runningContainers.put(remoteAddress, userContainer);
 		
 		return dockerProps.getHttpHost()+":"+port;
 	}
