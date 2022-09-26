@@ -36,7 +36,7 @@ class DockerRunnerApplicationTests {
 
 		try {
 			CreateContainerResponse createResponse = client.createContainerCmd("hiphop5782/jdk:11")
-					.withCmd("ttyd", "-o", "-p", "10011", "/bin/sh")
+					.withCmd("ttyd", "-p", "10011", "/bin/sh")
 					.withExposedPorts(ExposedPort.tcp(10011))
 					.withPortBindings(ports)
 					.withStdinOpen(true)

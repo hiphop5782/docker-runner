@@ -23,10 +23,12 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.Ports;
 import com.hacademy.docker.configuration.DockerConfigurationProperty;
 import com.hacademy.docker.constant.DockerType;
 import com.hacademy.docker.error.UnsupportedContainerException;
 import com.hacademy.docker.storage.UserContainer;
+import com.hacademy.docker.vo.SourceCodeVO;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,7 +57,10 @@ public class DockerServiceImpl implements DockerService{
 	}
 	
 	@Override
-	public String start(String remoteAddress, int javaVersion, String code) throws UnsupportedEncodingException, FileNotFoundException {
+	public String start(String remoteAddress, int javaVersion, SourceCodeVO vo) throws UnsupportedEncodingException, FileNotFoundException {
+		Ports ports = new Ports();
+		ports.bind(ExposedPort.tcp(10011), Ports.Binding.bindPort(10011));
+		
 		DockerType dockerType = DockerType.findImage("hiphop5782/jdk:"+javaVersion);
 		if(dockerType == null) throw new UnsupportedContainerException("지원하지 않는 컨테이너");
 		
@@ -64,14 +69,17 @@ public class DockerServiceImpl implements DockerService{
 		
 		CreateContainerResponse response = client.createContainerCmd(dockerType.getDockerImage())
 														.withCmd("ttyd", "-o", "-p", dockerType.getPortString(), "/bin/sh")
-														.withExposedPorts(ExposedPort.tcp(dockerType.getPort()))
+														.withPortBindings(ports)
 														.exec();
 		String containerId = response.getId();
 		log.info("container created = {}", containerId);
-		client.startContainerCmd(containerId).exec();
+		try {
+			client.startContainerCmd(containerId).exec();
+		}
+		catch(Exception e) {}
 		
-		if(code != null) {
-			code = URLDecoder.decode(code, "UTF-8");
+		if(vo.hasCode()) {
+			String code = vo.getCode();
 			log.info("code found\n{}", code);
 			
 			//find classname
