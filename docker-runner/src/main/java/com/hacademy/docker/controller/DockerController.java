@@ -24,12 +24,12 @@ public class DockerController {
 	private DockerService dockerService;
 
 	@GetMapping("/run/java/{version}")
-	public String run(@PathVariable int version, HttpServletRequest request) throws UnsupportedEncodingException, FileNotFoundException {
+	public String run(@PathVariable int version, HttpServletRequest request) throws UnsupportedEncodingException, FileNotFoundException, InterruptedException {
 		return dockerService.start(request.getRemoteAddr(), version);
 	}
 	
 	@PostMapping("/run/java/{version}")
-	public String run(@PathVariable int version, HttpServletRequest request, @RequestBody SourceCodeVO vo) throws UnsupportedEncodingException, FileNotFoundException {
+	public String run(@PathVariable int version, HttpServletRequest request, @RequestBody SourceCodeVO vo) throws UnsupportedEncodingException, FileNotFoundException, InterruptedException {
 		return dockerService.start(request.getRemoteAddr(), version, vo);
 	}
 }
