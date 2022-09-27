@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.Ports;
@@ -49,7 +50,7 @@ public class DockerServiceImpl implements DockerService{
 	
 	@Override
 	public String start(String remoteAddress, int javaVersion) throws UnsupportedEncodingException, FileNotFoundException, InterruptedException {
-		return start(remoteAddress, javaVersion, null);
+		return start(remoteAddress, javaVersion, new SourceCodeVO());
 	}
 	
 	@Override
@@ -60,7 +61,10 @@ public class DockerServiceImpl implements DockerService{
 		int port = portManager.create();
 		log.info("port selected = {}", port);
 		
-		String containerId = createContainer(dockerType, port);
+		String className = findClassName(vo.getCode());
+		log.info("class name = {}", className);
+		
+		String containerId = createContainer(dockerType, port, className);
 		log.info("container created = {}", containerId);
 		
 		//start container (if crash generate next port and retry)
@@ -75,7 +79,7 @@ public class DockerServiceImpl implements DockerService{
 		}
 		
 		if(vo.hasCode()) {
-			File source = createSourceFile(vo.getCode());
+			File source = createSourceFile(className, vo.getCode());
 			
 			copySourceFileToContainer(containerId, source);
 			
@@ -97,15 +101,22 @@ public class DockerServiceImpl implements DockerService{
 		}
 	}
 	
-	private String createContainer(DockerType dockerType, int port) {
+	private String createContainer(DockerType dockerType, int port, String className) {
 		Ports ports = new Ports();
 		ports.bind(ExposedPort.tcp(port), Ports.Binding.bindPort(port));
 		
-		return client.createContainerCmd(dockerType.getDockerImage())
-			.withCmd("ttyd", "-p", String.valueOf(port), "/bin/sh")
+		CreateContainerCmd cmd = client.createContainerCmd(dockerType.getDockerImage())
 			.withExposedPorts(ExposedPort.tcp(port))
-			.withPortBindings(ports)
-			.exec().getId();
+			.withPortBindings(ports);
+		
+		if(className == null) {//코드없는경우
+			cmd.withCmd("ttyd", "-p", String.valueOf(port), "/bin/sh");
+		}
+		else {//코드있는경우
+			cmd.withCmd("/bin/sh", "-c", "javac "+className+".java && ttyd -p "+port+" -t disableResizeOverlay=true -o java -cp . "+className);
+		}
+		
+		return cmd.exec().getId();
 	}
 	
 	private void startContainer(String containerId) {
@@ -113,17 +124,15 @@ public class DockerServiceImpl implements DockerService{
 	}
 	
 	private String findClassName(String code) {
+		if(code == null) return null;
+		
 		Matcher matcher = Pattern.compile("public\\s+class\\s+(\\w+)\\s*\\{").matcher(code);
 		matcher.find();
 		return matcher.group(1);
 	}
 	
-	private File createSourceFile(String code) throws UnsupportedEncodingException, FileNotFoundException {
+	private File createSourceFile(String className, String code) throws UnsupportedEncodingException, FileNotFoundException {
 		log.info("code found\n{}", code);
-		
-		//find classname
-		String className = findClassName(code);
-		log.info("class name = {}", className);
 		
 		//create source file
 		File target = new File(home, className+".java");
