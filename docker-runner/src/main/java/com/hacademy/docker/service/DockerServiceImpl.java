@@ -112,10 +112,10 @@ public class DockerServiceImpl implements DockerService{
 					.withAutoRemove(true));
 		
 		if(className == null) {//코드없는경우
-			cmd.withCmd("ttyd", "-o", "-p", String.valueOf(port), " -t disableResizeOverlay=true -t fontSize=12 -t 'theme={\"background\":\"white\", \"foreground\":\"black\"}'", "/bin/sh");
+			cmd.withCmd("ttyd", "-o", "-p", String.valueOf(port), " -t disableResizeOverlay=true -t fontSize=15 -t 'theme={\"background\":\"white\", \"foreground\":\"black\"}'", "/bin/sh");
 		}
 		else {//코드있는경우
-			cmd.withCmd("/bin/sh", "-c", "javac "+className+".java && ttyd -p "+port+" -t disableResizeOverlay=true -t fontSize=12 -t 'theme={\"background\":\"white\", \"foreground\":\"black\"}' -o java -cp . "+className);
+			cmd.withCmd("/bin/sh", "-c", "javac "+className+".java && ttyd -p "+port+" -t disableResizeOverlay=true -t fontSize=15 -t 'theme={\"background\":\"white\", \"foreground\":\"black\"}' -o java -cp . "+className);
 		}
 		
 		return cmd.exec().getId();
