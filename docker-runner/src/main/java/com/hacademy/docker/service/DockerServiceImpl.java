@@ -19,6 +19,8 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
 import com.hacademy.docker.component.PortManager;
 import com.hacademy.docker.configuration.DockerConfigurationProperty;
@@ -102,18 +104,18 @@ public class DockerServiceImpl implements DockerService{
 	}
 	
 	private String createContainer(DockerType dockerType, int port, String className) {
-		Ports ports = new Ports();
-		ports.bind(ExposedPort.tcp(port), Ports.Binding.bindPort(port));
-		
 		CreateContainerCmd cmd = client.createContainerCmd(dockerType.getDockerImage())
 			.withExposedPorts(ExposedPort.tcp(port))
-			.withPortBindings(ports);
+			.withHostConfig(
+					HostConfig.newHostConfig()
+					.withPortBindings(PortBinding.parse(port+":"+port))
+					.withAutoRemove(true));
 		
 		if(className == null) {//코드없는경우
-			cmd.withCmd("ttyd", "-p", String.valueOf(port), "/bin/sh");
+			cmd.withCmd("ttyd", "-o", "-p", String.valueOf(port), " -t disableResizeOverlay=true -t fontSize=12 -t 'theme={\"background\":\"white\", \"foreground\":\"black\"}'", "/bin/sh");
 		}
 		else {//코드있는경우
-			cmd.withCmd("/bin/sh", "-c", "javac "+className+".java && ttyd -p "+port+" -t disableResizeOverlay=true -o java -cp . "+className);
+			cmd.withCmd("/bin/sh", "-c", "javac "+className+".java && ttyd -p "+port+" -t disableResizeOverlay=true -t fontSize=12 -t 'theme={\"background\":\"white\", \"foreground\":\"black\"}' -o java -cp . "+className);
 		}
 		
 		return cmd.exec().getId();
