@@ -20,11 +20,6 @@
                     dataType:"text",
                     success:function(resp){
                         $("iframe").attr("src", resp);
-                        $("iframe").load(function(){
-                            var e = jQuery.Event("keydown");
-                            e.which = 50; // # Some key code value
-                            $(this).trigger(e);
-                        });
                     },
                 });
             });
