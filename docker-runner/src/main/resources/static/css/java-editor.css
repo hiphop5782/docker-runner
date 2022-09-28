@@ -11,19 +11,20 @@
 	font-style:normal;
 	font-stretch:100%;
 	font-weight:400;
-	line-height: 1.2em;
+	line-height: 1.45em;
 	word-spacing: 0em;
 	letter-spacing: 0em;
 	white-space:pre;
 	position: relative;
 	overflow-wrap: break-word;
-	
-	min-height:150px;
-	
+}
+.java-editor > .edit-panel {
+	position:relative;
+	min-height:180px;
 	border:1px solid gray;
 }
-.java-editor > .editor,
-.java-editor > .viewer {
+.java-editor > .edit-panel > .editor,
+.java-editor > .edit-panel > .viewer {
 	font-size:inherit;
 	font-family:inherit;
 	font-style:inherit;
@@ -48,27 +49,47 @@
 	margin:0;
 	padding:1em;
 	
-	border:1px solid gray;
-	
 	overflow: auto;
+	
+	border:none;
 }
-.java-editor > .editor {
+.java-editor > .edit-panel > .editor {
 	background-color: transparent;
 	color:transparent;
 	caret-color:black;
 	
 	resize: none;
-    border: none;
-    
+	
     -webkit-box-shadow: none;
     -moz-box-shadow: none;
     box-shadow: none;
     
     display:block;
+    
+    outline:none;
 }
-.java-editor > .viewer {
+.java-editor > .edit-panel > .viewer {
 	z-index:-1;
-	border:none;
+}
+
+.java-editor > .result-panel {
+	position:relative;
+}
+.java-editor > .result-panel > .button-panel {
+	text-align: right;
+	margin: 0.75em 0;
+}
+.java-editor > .result-panel > .button-panel > .execute-btn {
+	
+}
+.java-editor > .result-panel > .terminal {
+	display: none;
+	border:1px solid black;
+	width:100%;
+	min-height:180px;
+}
+.java-editor > .result-panel > .terminal.active {
+	display: block;
 }
 
 /* overloading hljs style */
