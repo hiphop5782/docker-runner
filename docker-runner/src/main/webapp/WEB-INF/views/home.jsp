@@ -1,10 +1,10 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
     pageEncoding="UTF-8"%>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Document</title>
+    <title>Java Runner</title>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/java-editor.css">
     
     <link rel="stylesheet" href="//unpkg.com/@highlightjs/cdn-assets@11.6.0/styles/github.min.css">

@@ -80,7 +80,16 @@
 	margin: 0.75em 0;
 }
 .java-editor > .result-panel > .button-panel > .execute-btn {
-	
+	border-style:solid;
+	border-color:#0984e3;
+	background-color:#0984e3;
+	color:white;
+	padding:0.75em;
+	border-radius:0.5em;
+}
+.java-editor > .result-panel > .button-panel > .execute-btn:hover {
+	background-color:#0875ca;
+	color:white;
 }
 .java-editor > .result-panel > .terminal {
 	display: none;
